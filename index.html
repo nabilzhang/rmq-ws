@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="jquery.min.js"></script>
+  <script src="sockjs-1.0.3.js"></script>
+  <script src="stomp.js"></script>
+  
+  <link href="main.css" rel="stylesheet" type="text/css"/>
+  <style>
+      html,body{
+        height: 98%;
+        width: 98%;
+      }
+      .box {
+          margin: 20px;
+      }
+
+      .box div {
+          border: 1px solid;
+          -moz-border-radius: 2px;
+          border-radius: 2px;
+          width: 100%;
+          padding: 5px;
+          margin: 0px 0 0px 0;
+      }
+
+      .header{
+        vertical-align: top;
+        height: 30px;
+        padding: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+
+      .header .title{
+        float: left;
+        line-height: 30px;
+        padding: 0;
+        margin: 0;
+        height: 30px;
+      }
+
+      .header div.sub_form{
+        float: left;
+        width: auto;
+        border:none;
+        height: 30px;
+        line-height: 30px;
+        overflow: auto;
+        padding: 0;
+        margin: 0 0 0 20px;
+      }
+
+      .box div {
+          border-color: grey;
+          overflow: auto;
+      }
+
+      .logconsole {
+          height: 80%;
+          clear: both;
+      }
+
+      .logconsole div{
+          height: 100%;
+      }
+
+      .web-run-log{
+        height: 5%;
+      }
+      .web-run-log div{
+        height: 100%;
+      }
+
+      div code {
+          display: block;
+      }
+
+  </style>
+  <title>log console</title>
+  
+
+</head>
+<body>
+    <div class="box header">
+        <h4 class="title">Log Web Console</h1>
+        <div class="sub_form">
+            <input type="text" id="vhost" placeholder="virtual host">
+            <input type="text" id="queue" placeholder="queue name">
+            <input type="text" id="username" placeholder="username">
+            <input type="password" id="password" placeholder="password">
+            <button onclick="subcribe_log();">GET</button>
+            <button onclick="clear_log();">CLEAR</button>
+        </div>
+    </div>
+    
+
+    <div id="logconsole" class="logconsole box">
+      <div></div>
+    </div>
+
+    <div id="web-run-log" class="web-run-log box">
+      <div></div>
+    </div>
+
+    <script>
+       
+      function pipe(el_name, send) {
+            var div  = $(el_name + ' div');
+
+            var print = function(m, p) {
+                p = (p === undefined) ? '' : JSON.stringify(p);
+                div.append($("<code>").text(m + ' ' + p));
+                div.scrollTop(div.scrollTop() + 10000);
+            };
+
+            return print;
+       };
+       
+      function clear_log(){
+        $("#logconsole code").text("");
+      }
+
+      function subcribe_log(){
+        var vhost=$("#vhost").val();
+        var queuename = $("#queue").val();
+        var username = $("#username").val();
+        var password = $("#password").val();
+        var host_port = "localhost:8532";
+
+        // Stomp.js
+        if (location.search == '?ws') {
+            var client = Stomp.client('ws://'+host_port+'/ws');
+        } else {
+            var ws = new SockJS('http://'+host_port+'/stomp');
+            var client = Stomp.over(ws);
+        }
+
+        client.debug = pipe('#web-run-log');
+
+        var print_log = pipe('#logconsole', function(data) {
+            client.send('/queue/'+queuename, {"content-type":"text/plain"}, data);
+            console.log(data);
+        });
+        var on_connect = function(x) {
+            id = client.subscribe("/queue/"+queuename, function(d) {
+              print_log(d.body);
+            });
+        };
+        var on_error =  function() {
+          console.log('error');
+        };
+        client.connect(username, password, on_connect, on_error, vhost);
+
+      }
+
+      
+    </script>
+</body></html>
